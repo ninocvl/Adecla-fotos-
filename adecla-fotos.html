@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ADECLA Fotos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:oklch(0.975 0.003 200);          /* blanco frío, sin crema */
+    --surface:#FFFFFF;
+    --ink:oklch(0.24 0.02 195);           /* tinta con leve cast de esmalte */
+    --ink-soft:oklch(0.45 0.02 195);      /* ≥4.5:1 sobre blanco */
+    --glaze:oklch(0.42 0.09 190);         /* verde esmalte profundo */
+    --glaze-deep:oklch(0.34 0.08 190);
+    --glaze-tint:oklch(0.94 0.02 190);
+    --line:oklch(0.9 0.008 200);
+    --ok:oklch(0.5 0.1 155);
+    --err:oklch(0.52 0.14 25);
+    --err-tint:oklch(0.95 0.025 25);
+    --ease:cubic-bezier(0.19,1,0.22,1);   /* ease-out-expo */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Bricolage Grotesque',system-ui,sans-serif;
+    font-size:15.5px;line-height:1.5;
+    font-optical-sizing:auto;
+  }
+  #app{
+    max-width:440px;margin:0 auto;
+    min-height:100dvh;
+    display:flex;flex-direction:column;
+    padding:0 22px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .in{opacity:0;transform:translateY(10px);animation:in 420ms var(--ease) forwards;}
+  .in:nth-of-type(2){animation-delay:50ms;}
+  .in:nth-of-type(3){animation-delay:100ms;}
+  .in:nth-of-type(4){animation-delay:150ms;}
+  .in:nth-of-type(5){animation-delay:200ms;}
+  .in:nth-of-type(6){animation-delay:250ms;}
+  @keyframes in{to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion:reduce){
+    .in{animation:fade 200ms ease forwards;transform:none;}
+    @keyframes fade{to{opacity:1;}}
+  }
+
+  /* ---------- header ---------- */
+  header{
+    padding:30px 0 6px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  h1{
+    font-size:24px;font-weight:700;letter-spacing:-0.025em;margin:0;
+    line-height:1.1;
+  }
+  h1 em{font-style:normal;color:var(--glaze);}
+  .conn{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:13px;font-weight:500;color:var(--ink-soft);
+    margin-top:3px;
+  }
+  .conn i{
+    width:7px;height:7px;border-radius:50%;background:var(--line);
+    transition:background 200ms ease;
+  }
+  .conn.live{color:var(--glaze);}
+  .conn.live i{background:var(--glaze);animation:breathe 2.4s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.45;transform:scale(0.8);}}
+  @media (prefers-reduced-motion:reduce){.conn.live i{animation:none;}}
+  #gear{
+    background:var(--surface);border:1px solid var(--line);color:var(--ink-soft);
+    cursor:pointer;width:46px;height:46px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform 130ms var(--ease), color 150ms ease, border-color 150ms ease;
+  }
+  #gear:active{transform:scale(0.92);}
+  @media (hover:hover) and (pointer:fine){
+    #gear:hover{color:var(--ink);border-color:var(--ink-soft);}
+  }
+  #gear svg{width:19px;height:19px;stroke-width:1.6;}
+
+  .section-title{
+    font-size:14px;font-weight:600;letter-spacing:-0.01em;
+    color:var(--ink-soft);margin:26px 0 12px;
+  }
+
+  /* ---------- event pills ---------- */
+  .pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .pill{
+    padding:11px 17px;min-height:46px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);
+    font-family:inherit;font-size:14.5px;font-weight:500;
+    cursor:pointer;
+    transition:background 160ms ease, border-color 160ms ease, color 160ms ease, transform 130ms var(--ease);
+  }
+  .pill:active{transform:scale(0.96);}
+  .pill.active{
+    background:var(--glaze);border-color:var(--glaze);color:#fff;font-weight:600;
+  }
+  .pill.add{color:var(--ink-soft);background:transparent;border-style:dashed;}
+  @media (hover:hover) and (pointer:fine){
+    .pill:not(.active):hover{border-color:var(--ink-soft);}
+  }
+
+  /* ---------- capture ---------- */
+  .capture{
+    border-radius:22px;
+    border:1.5px dashed var(--line);
+    background:var(--surface);
+    min-height:200px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;text-align:center;cursor:pointer;
+    padding:30px 20px;
+    transition:border-color 160ms ease, background 160ms ease;
+    overflow:hidden;
+  }
+  .capture:active{border-color:var(--glaze);background:var(--glaze-tint);}
+  .capture svg{width:32px;height:32px;stroke-width:1.4;color:var(--glaze);margin-bottom:8px;}
+  .capture .t1{font-weight:600;font-size:16px;letter-spacing:-0.01em;}
+  .capture .t2{font-size:13.5px;color:var(--ink-soft);}
+  .capture.filled{border:1px solid var(--line);border-radius:22px;padding:0;display:block;cursor:default;background:var(--surface);}
+  .capture.filled img{width:100%;display:block;max-height:330px;object-fit:cover;}
+  .photo-bar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 18px;
+  }
+  .photo-bar span{font-size:13.5px;font-weight:500;color:var(--ink-soft);}
+  .photo-bar button{
+    background:none;border:none;color:var(--glaze);cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;
+    min-height:44px;padding:0 4px;
+  }
+  #fileInput{display:none;}
+
+  /* ---------- primary CTA ---------- */
+  .cta{
+    width:100%;min-height:58px;
+    border:none;border-radius:18px;
+    background:var(--glaze);color:#fff;
+    font-family:inherit;font-weight:600;font-size:16.5px;letter-spacing:-0.01em;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    cursor:pointer;margin-top:22px;
+    box-shadow:0 1px 2px oklch(0.24 0.02 195 / 0.12), 0 8px 20px oklch(0.24 0.02 195 / 0.1);
+    transition:background 160ms ease, transform 130ms var(--ease), box-shadow 160ms ease;
+  }
+  .cta:active{transform:scale(0.98);background:var(--glaze-deep);}
+  .cta:disabled{
+    background:var(--line);color:var(--ink-soft);
+    box-shadow:none;cursor:not-allowed;
+  }
+  .cta svg{width:18px;height:18px;stroke-width:2;}
+
+  /* ---------- status ---------- */
+  .status{
+    display:none;align-items:center;gap:10px;
+    border-radius:14px;padding:13px 17px;margin-top:12px;
+    font-size:14px;font-weight:500;
+  }
+  .status.show{display:flex;animation:in 220ms var(--ease);}
+  .status.busy{background:var(--glaze-tint);color:var(--glaze-deep);}
+  .status.ok{background:oklch(0.94 0.03 155);color:var(--ok);}
+  .status.err{background:var(--err-tint);color:var(--err);}
+  .dot3{display:inline-flex;gap:3px;flex-shrink:0;}
+  .dot3 i{
+    width:5px;height:5px;border-radius:50%;background:currentColor;
+    animation:d3 1s infinite var(--ease);
+  }
+  .dot3 i:nth-child(2){animation-delay:150ms;}
+  .dot3 i:nth-child(3){animation-delay:300ms;}
+  @keyframes d3{0%,60%,100%{opacity:0.3;}30%{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.dot3 i{animation:none;opacity:0.7;}}
+
+  /* ---------- log ---------- */
+  .log{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:4px 18px;}
+  .log-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 0;
+  }
+  .log-item + .log-item{border-top:1px solid var(--line);}
+  .log-item .ev{font-weight:600;font-size:14.5px;letter-spacing:-0.01em;}
+  .log-item .time{font-size:12.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-top:1px;}
+  .log-item a{
+    color:var(--glaze);text-decoration:none;font-size:13.5px;font-weight:600;
+    min-height:44px;display:flex;align-items:center;padding:0 2px;
+  }
+  .log-empty{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    color:var(--ink-soft);font-size:14px;padding:22px 0 20px;text-align:center;
+  }
+  .log-empty svg{width:74px;height:44px;}
+  .log-empty .frame{fill:var(--glaze-tint);stroke:var(--line);}
+  .log-empty .frame-front{fill:var(--surface);stroke:var(--glaze);}
+  .log-empty .sun{fill:var(--glaze);}
+
+  /* ---------- settings sheet ---------- */
+  #settings{
+    position:fixed;inset:0;z-index:40;
+    background:oklch(0.24 0.02 195 / 0.35);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;align-items:flex-end;
+    opacity:0;pointer-events:none;
+    transition:opacity 200ms ease;
+  }
+  #settings.show{opacity:1;pointer-events:auto;}
+  .sheet{
+    width:100%;max-width:440px;margin:0 auto;
+    background:var(--bg);
+    border-radius:24px 24px 0 0;
+    padding:12px 24px calc(32px + env(safe-area-inset-bottom));
+    max-height:90dvh;overflow-y:auto;
+    transform:translateY(28px);
+    transition:transform 280ms var(--ease);
+  }
+  #settings.show .sheet{transform:translateY(0);}
+  @media (prefers-reduced-motion:reduce){
+    .sheet{transform:none;transition:none;}
+  }
+  .grip{width:40px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 22px;}
+  .sheet h2{font-size:21px;font-weight:700;letter-spacing:-0.02em;margin:0 0 4px;}
+  .sheet .sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;}
+  .field{margin-bottom:20px;}
+  .field label{
+    display:block;font-size:13.5px;font-weight:600;letter-spacing:-0.01em;
+    color:var(--ink);margin-bottom:7px;
+  }
+  .field input[type=text]{
+    width:100%;min-height:50px;padding:13px 16px;
+    border-radius:14px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);
+    font-family:inherit;font-size:14.5px;
+    transition:border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .field input[type=text]::placeholder{color:var(--ink-soft);}
+  .field input[type=text]:focus{
+    outline:none;border-color:var(--glaze);
+    box-shadow:0 0 0 3px var(--glaze-tint);
+  }
+  .field .hint{font-size:13px;color:var(--ink-soft);margin-top:7px;line-height:1.45;}
+  .toggle-row{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:15px 17px;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;
+    margin-bottom:22px;cursor:pointer;
+  }
+  .toggle-row .tt{font-size:14.5px;font-weight:600;letter-spacing:-0.01em;}
+  .toggle-row .td{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  .switch{
+    position:relative;width:46px;height:27px;flex-shrink:0;
+    border-radius:999px;background:var(--line);
+    transition:background 180ms ease;
+  }
+  .switch::after{
+    content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;
+    border-radius:50%;background:#fff;
+    box-shadow:0 1px 2px rgba(0,0,0,0.15);
+    transition:transform 180ms var(--ease);
+  }
+  .toggle-row.on .switch{background:var(--glaze);}
+  .toggle-row.on .switch::after{transform:translateX(19px);}
+  .sheet-actions{display:flex;gap:10px;}
+  .btn-ghost{
+    flex:1;min-height:54px;border-radius:16px;
+    background:var(--surface);border:1px solid var(--line);color:var(--ink);
+    font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+    transition:transform 130ms var(--ease);
+  }
+  .btn-ghost:active{transform:scale(0.97);}
+  .btn-save{
+    flex:1;min-height:54px;border-radius:16px;border:none;
+    background:var(--glaze);color:#fff;
+    font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
+    transition:transform 130ms var(--ease), background 160ms ease;
+  }
+  .btn-save:active{transform:scale(0.97);background:var(--glaze-deep);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="in">
+    <div>
+      <h1>ADECLA <em>Fotos</em></h1>
+      <div class="conn" id="conn"><i></i><span>Sin conectar</span></div>
+    </div>
+    <button id="gear" onclick="openSettings()" aria-label="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </header>
+
+  <div class="in">
+    <p class="section-title">¿De qué evento es la foto?</p>
+    <div class="pills" id="eventPills"></div>
+  </div>
+
+  <div class="in">
+    <p class="section-title">Foto</p>
+    <div class="capture" id="captureZone" onclick="pickPhoto()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      <div class="t1">Toca para tomar una foto</div>
+      <div class="t2">O elige una de tu galería</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleFile(event)">
+
+    <button class="cta" id="sendBtn" disabled onclick="sendPhoto()">
+      <span>Enviar a Drive</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+    </button>
+
+    <div class="status" id="status" role="status"></div>
+  </div>
+
+  <div class="in">
+    <p class="section-title">Enviadas hoy</p>
+    <div class="log" id="log"><div class="log-empty"><svg viewBox="0 0 74 44" aria-hidden="true"><rect class="frame" x="14" y="2" width="40" height="30" rx="6" transform="rotate(-4 34 17)"/><rect class="frame-front" x="22" y="10" width="40" height="30" rx="6" stroke-width="1.5"/><circle class="sun" cx="34" cy="21" r="4"/><path d="M28 34 L40 24 L48 30 L56 25" stroke="var(--glaze)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span>Tu primera foto del día aparecerá aquí.</span></div></div>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="sheet">
+    <div class="grip"></div>
+    <h2>Configuración</h2>
+    <p class="sub">Se guarda en este teléfono. Solo se hace una vez.</p>
+
+    <div class="field">
+      <label>Conexión con tu Drive</label>
+      <input type="text" id="cfgUrl" placeholder="Pega aquí el enlace del script" autocomplete="off">
+      <div class="hint">Es el enlace que copiaste al publicar tu script de Google (termina en /exec).</div>
+    </div>
+
+    <div class="field">
+      <label>Eventos</label>
+      <input type="text" id="cfgEvents" placeholder="Rueda de negocios, Capacitación" autocomplete="off">
+      <div class="hint">Sepáralos con comas. Cada uno tendrá su carpeta.</div>
+    </div>
+
+    <div class="field">
+      <label>Carpeta principal</label>
+      <input type="text" id="cfgRootFolder" placeholder="Fotos ADECLA" autocomplete="off">
+      <div class="hint">Todo se guarda dentro de esta carpeta en tu Drive.</div>
+    </div>
+
+    <div class="toggle-row" id="dateToggle" onclick="toggleDate()">
+      <div>
+        <div class="tt">Separar por fecha</div>
+        <div class="td">Crea una subcarpeta por día. Útil si el evento se repite.</div>
+      </div>
+      <div class="switch"></div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn-ghost" onclick="closeSettings()">Cancelar</button>
+      <button class="btn-save" onclick="saveSettings()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let config = { appsScriptUrl: '', events: ['General'], rootFolderName: 'Fotos ADECLA', dateFolder: false };
+let selectedEvent = null;
+let selectedFile = null;
+let sendLog = [];
+let dateOn = false;
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem('adecla_config');
+    if (raw) config = Object.assign({ rootFolderName: 'Fotos ADECLA', dateFolder: false }, JSON.parse(raw));
+  } catch (e) {}
+  try {
+    const lraw = localStorage.getItem('adecla_log');
+    if (lraw) sendLog = JSON.parse(lraw);
+  } catch (e) {}
+  renderEventPills();
+  renderLog();
+  updateConn();
+  if (!config.appsScriptUrl) openSettings();
+}
+
+function updateConn() {
+  const c = document.getElementById('conn');
+  if (config.appsScriptUrl) {
+    c.classList.add('live');
+    c.querySelector('span').textContent = 'Conectado a Drive';
+  } else {
+    c.classList.remove('live');
+    c.querySelector('span').textContent = 'Sin conectar';
+  }
+}
+
+function renderEventPills() {
+  const wrap = document.getElementById('eventPills');
+  wrap.innerHTML = '';
+  config.events.forEach(ev => {
+    const p = document.createElement('button');
+    p.className = 'pill' + (ev === selectedEvent ? ' active' : '');
+    p.textContent = ev;
+    p.onclick = () => { selectedEvent = ev; renderEventPills(); updateSendBtn(); };
+    wrap.appendChild(p);
+  });
+  const add = document.createElement('button');
+  add.className = 'pill add';
+  add.textContent = '+ Nuevo';
+  add.onclick = promptAddEvent;
+  wrap.appendChild(add);
+  if (!selectedEvent && config.events.length) {
+    selectedEvent = config.events[0];
+    renderEventPills();
+  }
+}
+
+function promptAddEvent() {
+  const name = prompt('Nombre del evento:');
+  if (!name || !name.trim()) return;
+  const clean = name.trim();
+  if (!config.events.includes(clean)) {
+    config.events.push(clean);
+    try { localStorage.setItem('adecla_config', JSON.stringify(config)); } catch (e) {}
+  }
+  selectedEvent = clean;
+  renderEventPills();
+  updateSendBtn();
+}
+
+function openSettings() {
+  document.getElementById('cfgUrl').value = config.appsScriptUrl || '';
+  document.getElementById('cfgEvents').value = config.events.join(', ');
+  document.getElementById('cfgRootFolder').value = config.rootFolderName || 'Fotos ADECLA';
+  dateOn = !!config.dateFolder;
+  syncToggle();
+  document.getElementById('settings').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settings').classList.remove('show');
+}
+function toggleDate() { dateOn = !dateOn; syncToggle(); }
+function syncToggle() {
+  document.getElementById('dateToggle').classList.toggle('on', dateOn);
+}
+function saveSettings() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  const evs = document.getElementById('cfgEvents').value.split(',').map(s => s.trim()).filter(Boolean);
+  const rootFolderName = document.getElementById('cfgRootFolder').value.trim() || 'Fotos ADECLA';
+  config = { appsScriptUrl: url, events: evs.length ? evs : ['General'], rootFolderName, dateFolder: dateOn };
+  try { localStorage.setItem('adecla_config', JSON.stringify(config)); }
+  catch (e) { showStatus('err', 'No se pudo guardar. Revisa el espacio del navegador.'); return; }
+  if (!config.events.includes(selectedEvent)) selectedEvent = config.events[0];
+  renderEventPills();
+  updateConn();
+  updateSendBtn();
+  closeSettings();
+}
+
+function pickPhoto() {
+  if (document.getElementById('captureZone').classList.contains('filled')) return;
+  document.getElementById('fileInput').click();
+}
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      const maxDim = 1600;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const s = maxDim / Math.max(w, h);
+        w = Math.round(w * s); h = Math.round(h * s);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      selectedFile = { base64: dataUrl.split(',')[1], fileName: 'foto_' + Date.now() + '.jpg' };
+      showPreview(dataUrl);
+      updateSendBtn();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showPreview(dataUrl) {
+  const zone = document.getElementById('captureZone');
+  zone.classList.add('filled');
+  zone.innerHTML = `
+    <img src="${dataUrl}" alt="Foto seleccionada">
+    <div class="photo-bar">
+      <span>Lista para enviar</span>
+      <button onclick="event.stopPropagation(); resetCapture();">Cambiar</button>
+    </div>`;
+}
+
+function resetCapture() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  const zone = document.getElementById('captureZone');
+  zone.classList.remove('filled');
+  zone.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+    <div class="t1">Toca para tomar una foto</div>
+    <div class="t2">O elige una de tu galería</div>`;
+  updateSendBtn();
+}
+
+function updateSendBtn() {
+  document.getElementById('sendBtn').disabled = !(selectedFile && selectedEvent && config.appsScriptUrl);
+}
+
+function showStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status show ' + type;
+  el.innerHTML = (type === 'busy' ? '<span class="dot3"><i></i><i></i><i></i></span>' : '') + '<span>' + msg + '</span>';
+}
+
+async function sendPhoto() {
+  if (!selectedFile || !selectedEvent || !config.appsScriptUrl) return;
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  showStatus('busy', 'Enviando a ' + selectedEvent + '…');
+  try {
+    const res = await fetch(config.appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        eventName: selectedEvent,
+        fileName: selectedFile.fileName,
+        photoBase64: selectedFile.base64,
+        rootFolderName: config.rootFolderName || 'Fotos ADECLA',
+        dateFolder: !!config.dateFolder
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      showStatus('ok', 'Guardada en ' + selectedEvent);
+      addLogEntry(selectedEvent, data.fileUrl);
+      notifyWhatsApp(selectedEvent, data.fileUrl);
+      resetCapture();
+    } else {
+      showStatus('err', 'No se pudo guardar. ' + (data.message || ''));
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showStatus('err', 'Sin conexión con Drive. Revisa tu internet o el enlace del script.');
+    btn.disabled = false;
+  }
+}
+
+function notifyWhatsApp(eventName, fileUrl) {
+  const text = encodeURIComponent('Nueva foto de ' + eventName + ':\n' + fileUrl);
+  window.open('https://wa.me/?text=' + text, '_blank');
+}
+
+function addLogEntry(eventName, fileUrl) {
+  const time = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  sendLog.unshift({ eventName, fileUrl, time });
+  sendLog = sendLog.slice(0, 15);
+  try { localStorage.setItem('adecla_log', JSON.stringify(sendLog)); } catch (e) {}
+  renderLog();
+}
+
+function renderLog() {
+  const wrap = document.getElementById('log');
+  if (!sendLog.length) {
+    wrap.innerHTML = '<div class="log-empty"><svg viewBox="0 0 74 44" aria-hidden="true"><rect class="frame" x="14" y="2" width="40" height="30" rx="6" transform="rotate(-4 34 17)"/><rect class="frame-front" x="22" y="10" width="40" height="30" rx="6" stroke-width="1.5"/><circle class="sun" cx="34" cy="21" r="4"/><path d="M28 34 L40 24 L48 30 L56 25" stroke="var(--glaze)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span>Tu primera foto del día aparecerá aquí.</span></div>';
+    return;
+  }
+  wrap.innerHTML = sendLog.map(item => `
+    <div class="log-item">
+      <div><div class="ev">${item.eventName}</div><div class="time">${item.time}</div></div>
+      <a href="${item.fileUrl}" target="_blank" rel="noopener">Ver en Drive</a>
+    </div>`).join('');
+}
+
+loadConfig();
+</script>
+</body>
+</html>
