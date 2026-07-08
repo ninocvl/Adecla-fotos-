@@ -140,6 +140,38 @@
   }
   #fileInput{display:none;}
 
+  /* ---------- thumbnail grid (multi-select) ---------- */
+  .thumb-grid{
+    display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:22px;
+    padding:12px;
+  }
+  .thumb{
+    position:relative;aspect-ratio:1;border-radius:13px;overflow:hidden;
+    background:var(--glaze-tint);
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb button{
+    position:absolute;top:5px;right:5px;
+    width:24px;height:24px;border-radius:50%;border:none;
+    background:oklch(0.24 0.02 195 / 0.55);color:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    backdrop-filter:blur(4px);
+  }
+  .thumb button svg{width:12px;height:12px;stroke-width:2.5;}
+  .thumb-add{
+    display:flex;align-items:center;justify-content:center;
+    border:1.5px dashed var(--line);background:transparent;cursor:pointer;
+    color:var(--ink-soft);
+    transition:border-color 160ms ease;
+  }
+  .thumb-add:active{border-color:var(--glaze);}
+  .thumb-add svg{width:22px;height:22px;stroke-width:1.6;}
+  .thumb-count{
+    grid-column:1 / -1;font-size:13px;color:var(--ink-soft);font-weight:500;
+    padding:2px 2px 0;
+  }
+
   /* ---------- primary CTA ---------- */
   .cta{
     width:100%;min-height:58px;
@@ -280,6 +312,34 @@
     transition:transform 130ms var(--ease), background 160ms ease;
   }
   .btn-save:active{transform:scale(0.97);background:var(--glaze-deep);}
+
+  .static-value{
+    min-height:50px;padding:13px 16px;
+    border-radius:14px;background:var(--glaze-tint);
+    color:var(--glaze-deep);font-weight:600;font-size:14.5px;
+    display:flex;align-items:center;
+  }
+  .chip-list{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{
+    padding:8px 13px;border-radius:11px;background:var(--surface);
+    border:1px solid var(--line);font-size:13.5px;font-weight:500;color:var(--ink);
+  }
+  .chip-empty{font-size:13.5px;color:var(--ink-soft);}
+
+  #eventModal{
+    position:fixed;inset:0;z-index:41;
+    background:oklch(0.24 0.02 195 / 0.35);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;align-items:flex-end;
+    opacity:0;pointer-events:none;
+    transition:opacity 200ms ease;
+  }
+  #eventModal.show{opacity:1;pointer-events:auto;}
+  #eventModal .sheet{transform:translateY(28px);transition:transform 280ms var(--ease);}
+  #eventModal.show .sheet{transform:translateY(0);}
+  @media (prefers-reduced-motion:reduce){
+    #eventModal .sheet{transform:none;transition:none;}
+  }
 </style>
 </head>
 <body>
@@ -301,16 +361,16 @@
   </div>
 
   <div class="in">
-    <p class="section-title">Foto</p>
+    <p class="section-title">Fotos</p>
     <div class="capture" id="captureZone" onclick="pickPhoto()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-      <div class="t1">Toca para tomar una foto</div>
-      <div class="t2">O elige una de tu galería</div>
+      <div class="t1">Toca para elegir fotos</div>
+      <div class="t2">Cámara o varias de tu galería</div>
     </div>
-    <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleFile(event)">
+    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(event)">
 
-    <button class="cta" id="sendBtn" disabled onclick="sendPhoto()">
-      <span>Enviar a Drive</span>
+    <button class="cta" id="sendBtn" disabled onclick="sendPhotos()">
+      <span id="sendLabel">Enviar a Drive</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
     </button>
 
@@ -335,24 +395,24 @@
       <div class="hint">Es el enlace que copiaste al publicar tu script de Google (termina en /exec).</div>
     </div>
 
-    <div class="field">
-      <label>Eventos</label>
-      <input type="text" id="cfgEvents" placeholder="Rueda de negocios, Capacitación" autocomplete="off">
-      <div class="hint">Sepáralos con comas. Cada uno tendrá su carpeta.</div>
+    <div class="toggle-row" id="dateToggle" onclick="toggleDate()">
+      <div>
+        <div class="tt">Separar por fecha</div>
+        <div class="td">Crea una subcarpeta por día dentro de cada evento. Aplica para todos los celulares.</div>
+      </div>
+      <div class="switch"></div>
     </div>
 
     <div class="field">
       <label>Carpeta principal</label>
-      <input type="text" id="cfgRootFolder" placeholder="Fotos ADECLA" autocomplete="off">
-      <div class="hint">Todo se guarda dentro de esta carpeta en tu Drive.</div>
+      <div class="static-value">ADECLA Fotos</div>
+      <div class="hint">Fija en tu Drive, igual para todos los celulares.</div>
     </div>
 
-    <div class="toggle-row" id="dateToggle" onclick="toggleDate()">
-      <div>
-        <div class="tt">Separar por fecha</div>
-        <div class="td">Crea una subcarpeta por día. Útil si el evento se repite.</div>
-      </div>
-      <div class="switch"></div>
+    <div class="field">
+      <label>Eventos activos</label>
+      <div class="chip-list" id="settingsEventList"></div>
+      <div class="hint">Se leen directo de las carpetas en tu Drive. Para agregar uno, usa "+ Nuevo" en la pantalla principal.</div>
     </div>
 
     <div class="sheet-actions">
@@ -362,26 +422,76 @@
   </div>
 </div>
 
+<div id="eventModal">
+  <div class="sheet">
+    <div class="grip"></div>
+    <h2>Nuevo evento</h2>
+    <p class="sub">Se crea la carpeta en Drive al instante y aparece en todos los celulares.</p>
+    <div class="field">
+      <label>Nombre</label>
+      <input type="text" id="newEventName" placeholder="Rueda de negocios" autocomplete="off" autocapitalize="sentences">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" onclick="closeEventModal()">Cancelar</button>
+      <button class="btn-save" onclick="confirmAddEvent()">Crear evento</button>
+    </div>
+  </div>
+</div>
+
 <script>
-let config = { appsScriptUrl: '', events: ['General'], rootFolderName: 'Fotos ADECLA', dateFolder: false };
+let config = { appsScriptUrl: '' };
+let events = [];
 let selectedEvent = null;
-let selectedFile = null;
+let selectedFiles = []; // [{base64, fileName, previewUrl}]
 let sendLog = [];
 let dateOn = false;
 
 function loadConfig() {
   try {
     const raw = localStorage.getItem('adecla_config');
-    if (raw) config = Object.assign({ rootFolderName: 'Fotos ADECLA', dateFolder: false }, JSON.parse(raw));
+    if (raw) config = Object.assign({}, JSON.parse(raw));
   } catch (e) {}
   try {
     const lraw = localStorage.getItem('adecla_log');
     if (lraw) sendLog = JSON.parse(lraw);
   } catch (e) {}
+  try {
+    const eraw = localStorage.getItem('adecla_events_cache');
+    if (eraw) events = JSON.parse(eraw);
+  } catch (e) {}
   renderEventPills();
+  renderThumbs();
   renderLog();
   updateConn();
-  if (!config.appsScriptUrl) openSettings();
+  if (!config.appsScriptUrl) { openSettings(); return; }
+  refreshEvents();
+}
+
+async function refreshEvents() {
+  if (!config.appsScriptUrl) return;
+  try {
+    const res = await fetch(config.appsScriptUrl, { method: 'GET' });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      events = (data.events && data.events.length) ? data.events : ['General'];
+      try { localStorage.setItem('adecla_events_cache', JSON.stringify(events)); } catch (e) {}
+      if (!selectedEvent || !events.includes(selectedEvent)) selectedEvent = events[0];
+      renderEventPills();
+      renderSettingsEventList();
+      dateOn = !!data.dateFolder;
+      syncToggle();
+    }
+  } catch (e) { /* sin internet: seguimos con la caché local */ }
+}
+
+function renderSettingsEventList() {
+  const wrap = document.getElementById('settingsEventList');
+  if (!wrap) return;
+  if (!events.length) {
+    wrap.innerHTML = '<span class="chip-empty">Todavía no hay eventos creados.</span>';
+    return;
+  }
+  wrap.innerHTML = events.map(ev => `<span class="chip">${ev}</span>`).join('');
 }
 
 function updateConn() {
@@ -398,7 +508,8 @@ function updateConn() {
 function renderEventPills() {
   const wrap = document.getElementById('eventPills');
   wrap.innerHTML = '';
-  config.events.forEach(ev => {
+  if (!events.length) events = ['General'];
+  events.forEach(ev => {
     const p = document.createElement('button');
     p.className = 'pill' + (ev === selectedEvent ? ' active' : '');
     p.textContent = ev;
@@ -408,33 +519,56 @@ function renderEventPills() {
   const add = document.createElement('button');
   add.className = 'pill add';
   add.textContent = '+ Nuevo';
-  add.onclick = promptAddEvent;
+  add.onclick = openEventModal;
   wrap.appendChild(add);
-  if (!selectedEvent && config.events.length) {
-    selectedEvent = config.events[0];
+  if (!selectedEvent) {
+    selectedEvent = events[0];
     renderEventPills();
   }
 }
 
-function promptAddEvent() {
-  const name = prompt('Nombre del evento:');
-  if (!name || !name.trim()) return;
-  const clean = name.trim();
-  if (!config.events.includes(clean)) {
-    config.events.push(clean);
-    try { localStorage.setItem('adecla_config', JSON.stringify(config)); } catch (e) {}
+function openEventModal() {
+  if (!config.appsScriptUrl) { openSettings(); return; }
+  document.getElementById('newEventName').value = '';
+  document.getElementById('eventModal').classList.add('show');
+  setTimeout(() => document.getElementById('newEventName').focus(), 250);
+}
+function closeEventModal() {
+  document.getElementById('eventModal').classList.remove('show');
+}
+async function confirmAddEvent() {
+  const input = document.getElementById('newEventName');
+  const clean = input.value.trim();
+  if (!clean) { input.focus(); return; }
+  closeEventModal();
+  showStatus('busy', 'Creando carpeta para ' + clean + '…');
+  try {
+    const res = await fetch(config.appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'createEvent', eventName: clean })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      events = data.events;
+      try { localStorage.setItem('adecla_events_cache', JSON.stringify(events)); } catch (e) {}
+      selectedEvent = clean;
+      renderEventPills();
+      renderSettingsEventList();
+      updateSendBtn();
+      document.getElementById('status').className = 'status';
+    } else {
+      showStatus('err', 'No se pudo crear el evento. ' + (data.message || ''));
+    }
+  } catch (e) {
+    showStatus('err', 'Sin conexión. No se pudo crear el evento en Drive.');
   }
-  selectedEvent = clean;
-  renderEventPills();
-  updateSendBtn();
 }
 
 function openSettings() {
   document.getElementById('cfgUrl').value = config.appsScriptUrl || '';
-  document.getElementById('cfgEvents').value = config.events.join(', ');
-  document.getElementById('cfgRootFolder').value = config.rootFolderName || 'Fotos ADECLA';
-  dateOn = !!config.dateFolder;
   syncToggle();
+  renderSettingsEventList();
   document.getElementById('settings').classList.add('show');
 }
 function closeSettings() {
@@ -444,76 +578,107 @@ function toggleDate() { dateOn = !dateOn; syncToggle(); }
 function syncToggle() {
   document.getElementById('dateToggle').classList.toggle('on', dateOn);
 }
-function saveSettings() {
+async function saveSettings() {
   const url = document.getElementById('cfgUrl').value.trim();
-  const evs = document.getElementById('cfgEvents').value.split(',').map(s => s.trim()).filter(Boolean);
-  const rootFolderName = document.getElementById('cfgRootFolder').value.trim() || 'Fotos ADECLA';
-  config = { appsScriptUrl: url, events: evs.length ? evs : ['General'], rootFolderName, dateFolder: dateOn };
+  const prevUrl = config.appsScriptUrl;
+  config = { appsScriptUrl: url };
   try { localStorage.setItem('adecla_config', JSON.stringify(config)); }
   catch (e) { showStatus('err', 'No se pudo guardar. Revisa el espacio del navegador.'); return; }
-  if (!config.events.includes(selectedEvent)) selectedEvent = config.events[0];
-  renderEventPills();
   updateConn();
-  updateSendBtn();
   closeSettings();
+
+  if (!url) return;
+  showStatus('busy', 'Sincronizando con Drive…');
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'setDateFolder', value: dateOn })
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || '');
+    document.getElementById('status').className = 'status';
+  } catch (e) {
+    showStatus('err', 'No se pudo guardar la preferencia de fecha. Revisa el enlace del script.');
+  }
+  await refreshEvents();
+  updateSendBtn();
 }
 
 function pickPhoto() {
-  if (document.getElementById('captureZone').classList.contains('filled')) return;
   document.getElementById('fileInput').click();
 }
 
-function handleFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const img = new Image();
-    img.onload = function() {
-      const maxDim = 1600;
-      let w = img.width, h = img.height;
-      if (w > maxDim || h > maxDim) {
-        const s = maxDim / Math.max(w, h);
-        w = Math.round(w * s); h = Math.round(h * s);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      selectedFile = { base64: dataUrl.split(',')[1], fileName: 'foto_' + Date.now() + '.jpg' };
-      showPreview(dataUrl);
-      updateSendBtn();
+function handleFiles(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  let pending = files.length;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 1600;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          const s = maxDim / Math.max(w, h);
+          w = Math.round(w * s); h = Math.round(h * s);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        selectedFiles.push({
+          base64: dataUrl.split(',')[1],
+          fileName: 'foto_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '.jpg',
+          previewUrl: dataUrl
+        });
+        pending--;
+        if (pending === 0) { renderThumbs(); updateSendBtn(); }
+      };
+      img.src = ev.target.result;
     };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
 }
 
-function showPreview(dataUrl) {
-  const zone = document.getElementById('captureZone');
-  zone.classList.add('filled');
-  zone.innerHTML = `
-    <img src="${dataUrl}" alt="Foto seleccionada">
-    <div class="photo-bar">
-      <span>Lista para enviar</span>
-      <button onclick="event.stopPropagation(); resetCapture();">Cambiar</button>
-    </div>`;
-}
-
-function resetCapture() {
-  selectedFile = null;
-  document.getElementById('fileInput').value = '';
-  const zone = document.getElementById('captureZone');
-  zone.classList.remove('filled');
-  zone.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-    <div class="t1">Toca para tomar una foto</div>
-    <div class="t2">O elige una de tu galería</div>`;
+function removeThumb(idx) {
+  selectedFiles.splice(idx, 1);
+  renderThumbs();
   updateSendBtn();
 }
 
+function renderThumbs() {
+  const zone = document.getElementById('captureZone');
+  if (!selectedFiles.length) {
+    zone.classList.remove('filled');
+    zone.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      <div class="t1">Toca para elegir fotos</div>
+      <div class="t2">Cámara o varias de tu galería</div>`;
+    zone.onclick = pickPhoto;
+    return;
+  }
+  zone.classList.add('filled');
+  zone.onclick = null;
+  const count = selectedFiles.length;
+  let html = `<div class="thumb-grid"><div class="thumb-count">${count} foto${count > 1 ? 's' : ''} lista${count > 1 ? 's' : ''}</div>`;
+  selectedFiles.forEach((f, i) => {
+    html += `<div class="thumb"><img src="${f.previewUrl}" alt="Foto ${i+1}">
+      <button onclick="removeThumb(${i})" aria-label="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg></button>
+    </div>`;
+  });
+  html += `<button class="thumb thumb-add" onclick="pickPhoto()" aria-label="Agregar más"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>`;
+  html += `</div>`;
+  zone.innerHTML = html;
+}
+
 function updateSendBtn() {
-  document.getElementById('sendBtn').disabled = !(selectedFile && selectedEvent && config.appsScriptUrl);
+  const n = selectedFiles.length;
+  document.getElementById('sendBtn').disabled = !(n && selectedEvent && config.appsScriptUrl);
+  document.getElementById('sendLabel').textContent =
+    n > 1 ? `Enviar ${n} fotos a Drive` : 'Enviar a Drive';
 }
 
 function showStatus(type, msg) {
@@ -522,47 +687,65 @@ function showStatus(type, msg) {
   el.innerHTML = (type === 'busy' ? '<span class="dot3"><i></i><i></i><i></i></span>' : '') + '<span>' + msg + '</span>';
 }
 
-async function sendPhoto() {
-  if (!selectedFile || !selectedEvent || !config.appsScriptUrl) return;
+async function sendPhotos() {
+  if (!selectedFiles.length || !selectedEvent || !config.appsScriptUrl) return;
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
-  showStatus('busy', 'Enviando a ' + selectedEvent + '…');
-  try {
-    const res = await fetch(config.appsScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        eventName: selectedEvent,
-        fileName: selectedFile.fileName,
-        photoBase64: selectedFile.base64,
-        rootFolderName: config.rootFolderName || 'Fotos ADECLA',
-        dateFolder: !!config.dateFolder
-      })
-    });
-    const data = await res.json();
-    if (data.status === 'ok') {
-      showStatus('ok', 'Guardada en ' + selectedEvent);
-      addLogEntry(selectedEvent, data.fileUrl);
-      notifyWhatsApp(selectedEvent, data.fileUrl);
-      resetCapture();
-    } else {
-      showStatus('err', 'No se pudo guardar. ' + (data.message || ''));
-      btn.disabled = false;
+  const total = selectedFiles.length;
+  let sent = 0, failed = 0, lastFolderUrl = null;
+
+  for (let i = 0; i < selectedFiles.length; i++) {
+    const f = selectedFiles[i];
+    showStatus('busy', total > 1 ? `Enviando foto ${i + 1} de ${total}…` : 'Enviando a ' + selectedEvent + '…');
+    try {
+      const res = await fetch(config.appsScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          eventName: selectedEvent,
+          fileName: f.fileName,
+          photoBase64: f.base64
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        sent++;
+        lastFolderUrl = data.folderUrl || lastFolderUrl;
+      } else {
+        failed++;
+      }
+    } catch (e) {
+      failed++;
     }
-  } catch (e) {
-    showStatus('err', 'Sin conexión con Drive. Revisa tu internet o el enlace del script.');
-    btn.disabled = false;
   }
+
+  if (sent > 0) {
+    addLogEntry(selectedEvent, lastFolderUrl, sent);
+    notifyWhatsApp(selectedEvent, lastFolderUrl, sent);
+  }
+  if (failed === 0) {
+    showStatus('ok', sent > 1 ? `${sent} fotos guardadas en ${selectedEvent}` : `Guardada en ${selectedEvent}`);
+  } else if (sent > 0) {
+    showStatus('err', `${sent} enviadas, ${failed} fallaron. Vuelve a intentar con las que faltan.`);
+  } else {
+    showStatus('err', 'No se pudo guardar. Revisa tu conexión.');
+  }
+
+  selectedFiles = selectedFiles.slice(sent); // deja en la grilla las que fallaron
+  renderThumbs();
+  updateSendBtn();
 }
 
-function notifyWhatsApp(eventName, fileUrl) {
-  const text = encodeURIComponent('Nueva foto de ' + eventName + ':\n' + fileUrl);
-  window.open('https://wa.me/?text=' + text, '_blank');
+function notifyWhatsApp(eventName, folderUrl, count) {
+  const msg = count > 1
+    ? `${count} fotos nuevas de ${eventName}:\n${folderUrl || ''}`
+    : `Nueva foto de ${eventName}:\n${folderUrl || ''}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
-function addLogEntry(eventName, fileUrl) {
+function addLogEntry(eventName, folderUrl, count) {
   const time = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-  sendLog.unshift({ eventName, fileUrl, time });
+  sendLog.unshift({ eventName, fileUrl: folderUrl, time, count: count || 1 });
   sendLog = sendLog.slice(0, 15);
   try { localStorage.setItem('adecla_log', JSON.stringify(sendLog)); } catch (e) {}
   renderLog();
@@ -576,7 +759,7 @@ function renderLog() {
   }
   wrap.innerHTML = sendLog.map(item => `
     <div class="log-item">
-      <div><div class="ev">${item.eventName}</div><div class="time">${item.time}</div></div>
+      <div><div class="ev">${item.eventName}${item.count > 1 ? ' · ' + item.count + ' fotos' : ''}</div><div class="time">${item.time}</div></div>
       <a href="${item.fileUrl}" target="_blank" rel="noopener">Ver en Drive</a>
     </div>`).join('');
 }
